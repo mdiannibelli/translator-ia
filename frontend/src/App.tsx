@@ -5,7 +5,6 @@ import TextArea from "./components/TextArea"
 import { useStore } from "./hooks/useStore"
 import { AUTO_LANGUAGES } from "./types/constants"
 import { useDebounce } from "./hooks/useDebounce"
-import { translateBackend } from "./service/backendTranslate"
 
 function App() {
   const { fromLanguage, toLanguage, selectToLanguages, selectFromLanguages, interchangeLanguages, fromText, translatedText, setFromText, setTranslatedText, loading } = useStore()
@@ -13,12 +12,30 @@ function App() {
   const debouncedFromText = useDebounce(fromText, 300)
 
   useEffect(() => {
-    if (debouncedFromText === '') return
-    translateBackend({ fromLanguage, toLanguage, text: debouncedFromText }).then(res => {
-      if (res == null) return
-      setTranslatedText(res)
-    }).catch((e) => setTranslatedText(e))
-  }, [fromLanguage, debouncedFromText, toLanguage, setTranslatedText])
+    if (fromText === '') return
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/translate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            fromLanguage,
+            toLanguage,
+            text: debouncedFromText
+          })
+        })
+
+        if (!response.ok) throw new Error("Error at fetching to /api/translate")
+        const data = await response.json()
+        setTranslatedText(data.translatedText)
+      } catch (error) {
+        console.log('Error at fetching', error)
+      }
+    }
+    fetchData()
+  }, [fromText, debouncedFromText, setTranslatedText, fromLanguage, toLanguage])
   return (
     <main className="flex min-h-screen flex-col justify-center items-center">
       <div className="flex justify-center items-center">
